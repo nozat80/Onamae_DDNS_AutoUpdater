@@ -12,13 +12,12 @@ const char* DOMNAME = "example.com";
 
 char ip_file[PATH_MAX];
 
-
 int main(int argc, char *argv[]) {
-	if (argc == 0 || argv[0] == NULL) {
+    if (argc == 0 || argv[0] == NULL) {
         printf("ERROR!! Can't get executable path\n");
         return -1;
     }
-	
+
     // 実行ファイルのパスを取得
     char exe_path[PATH_MAX];
     if (realpath(argv[0], exe_path) == NULL) {
@@ -31,12 +30,12 @@ int main(int argc, char *argv[]) {
 
     // 実行ファイルのディレクトリに IP_FILE のパスを設定
     snprintf(ip_file, sizeof(ip_file), "%s/current_ip.txt", exe_dir);
-	
-	
+
+
     FILE *file;
     char buffer[128];
     char previous_ip[128] = "";
-	
+
 
     // 現在のIPアドレスを取得
     file = popen("curl ifconfig.io -4", "r");
