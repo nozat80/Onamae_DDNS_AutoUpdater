@@ -1,11 +1,10 @@
 CC = gcc
-CFLAGS = -O4 -Wall -I/usr/local/include
-LDFLAGS = -L/usr/local/lib
+CFLAGS = -O4 -Wall
 DEST = /usr/local/bin
 PROGRAM = onamae_ddns
 
 $(PROGRAM): ddns.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(PROGRAM) ddns.o
+	$(CC) $(CFLAGS) -o $(PROGRAM) ddns.o
 
 ddns.o: ddns.cpp
 	$(CC) $(CFLAGS) -c ddns.cpp
