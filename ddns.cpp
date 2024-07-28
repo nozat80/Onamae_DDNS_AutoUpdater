@@ -190,6 +190,6 @@ int main(int argc, char *argv[]) {
         printf("IPアドレスに変更はありません: %s\n", buffer);
     }
 
-    printf("正常終了");
+    printf("正常終了\n");
     return 0;
 }
