@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <cstring>
 
 #define BUFFER_SIZE 1024
 
@@ -104,6 +105,21 @@ int main(int argc, char *argv[]) {
                 return 1;
             }
 
+            while (fgets(response, BUFFER_SIZE, from_child) != NULL) {
+                if (strstr(response,".") != NULL){
+                    break;
+                }
+                printf("CONNECT Response: %s", response);
+                if (strstr(response, "SUCCESS") == NULL) {
+                    fprintf(stderr, "Connect failed\n");
+                    fclose(to_child);
+                    fclose(from_child);
+                    wait(NULL);
+                    return 1;
+                }
+                
+            }
+
             // Send LOGIN command
             fprintf(to_child, "LOGIN\nUSERID:%s\nPASSWORD:%s\n.\n", USER_ID, PASS);
             fflush(to_child);
@@ -111,7 +127,7 @@ int main(int argc, char *argv[]) {
 
             // Read server response for LOGIN
             while (fgets(response, BUFFER_SIZE, from_child) != NULL) {
-                if (response == "."){
+                if (strstr(response,".") != NULL){
                     break;
                 }
                 printf("LOGIN Response: %s", response);
@@ -132,7 +148,7 @@ int main(int argc, char *argv[]) {
 
             // Read server response for MODIP
             while (fgets(response, BUFFER_SIZE, from_child) != NULL) {
-                if (response == "."){
+                if (strstr(response,".") != NULL){
                     break;
                 }
                 printf("MODIP Response: %s", response);
@@ -160,7 +176,6 @@ int main(int argc, char *argv[]) {
             fclose(from_child);
             wait(NULL);
          
-            return 0;
         }
 
         // 現在のIPアドレスをファイルに保存
