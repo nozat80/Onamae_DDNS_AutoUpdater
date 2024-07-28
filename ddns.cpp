@@ -4,6 +4,8 @@
 #include <libgen.h>
 #include <limits.h>
 #include <stdlib.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define BUFFER_SIZE 1024
 
@@ -40,6 +42,9 @@ int main(int argc, char *argv[]) {
     char buffer[128];
     char previous_ip[128] = "";
     char response[BUFFER_SIZE];
+    int to_child_pipe[2];
+    int from_child_pipe[2];
+    pid_t pid;
 
 
     // 現在のIPアドレスを取得
@@ -62,46 +67,93 @@ int main(int argc, char *argv[]) {
     if (strcmp(buffer, previous_ip) != 0) {
         printf("IPアドレスが変更されました: %s\n", buffer);
 
-        // DNSの登録を実行
-        file = popen("openssl s_client -connect ddnsclient.onamae.com:65010 -quiet", "w");
-        if (file == NULL) {
-            perror("popen");
+        // Create pipes
+        if (pipe(to_child_pipe) == -1 || pipe(from_child_pipe) == -1) {
+            perror("pipe");
             return 1;
         }
-        
-        fprintf(file, "LOGIN\nUSERID:%s\nPASSWORD:%s\n.\n", USER_ID, PASS);
-        fflush(file);
-        sleep(1);
-        if (fgets(response, BUFFER_SIZE, file) != NULL) {
-            printf("LOGIN Response: %s", response);
-            if (strstr(response, "SUCCESS") == NULL) {
-                fprintf(stderr, "Login failed\n");
-                pclose(file);
+
+        // Fork a child process
+        pid = fork();
+        if (pid == -1) {
+            perror("fork");
+            return 1;
+        } else if (pid == 0) { // Child process
+            // Redirect stdin and stdout
+            dup2(to_child_pipe[0], STDIN_FILENO);
+            dup2(from_child_pipe[1], STDOUT_FILENO);
+
+            // Close unused pipe ends
+            close(to_child_pipe[1]);
+            close(from_child_pipe[0]);
+
+            // Execute openssl s_client
+            execlp("openssl", "openssl", "s_client", "-connect", "ddnsclient.onamae.com:65010", "-quiet", (char *)NULL);
+            perror("execlp");
+            exit(1);
+        } else { // Parent process
+            // Close unused pipe ends
+            close(to_child_pipe[0]);
+            close(from_child_pipe[1]);
+
+            FILE *to_child = fdopen(to_child_pipe[1], "w");
+            FILE *from_child = fdopen(from_child_pipe[0], "r");
+
+            if (to_child == NULL || from_child == NULL) {
+                perror("fdopen");
                 return 1;
             }
-        }
-        
-        fprintf(file, "MODIP\nHOSTNAME:%s\nDOMNAME:%s\nIPV4:%s\n.\n", HOSTNAME, DOMNAME, buffer);
-        fflush(file);
-        sleep(1);        
-        if (fgets(response, BUFFER_SIZE, file) != NULL) {
-            printf("MODIP Response: %s", response);
-            if (strstr(response, "SUCCESS") == NULL) {
-                fprintf(stderr, "MODIP command failed\n");
-                pclose(file);
-                return 1;
+
+            // Send LOGIN command
+            fprintf(to_child, "LOGIN\nUSERID:%s\nPASSWORD:%s\n.\n", USER_ID, PASS);
+            fflush(to_child);
+            sleep(1);
+
+            // Read server response for LOGIN
+            if (fgets(response, BUFFER_SIZE, from_child) != NULL) {
+                printf("LOGIN Response: %s", response);
+                if (strstr(response, "SUCCESS") == NULL) {
+                    fprintf(stderr, "Login failed\n");
+                    fclose(to_child);
+                    fclose(from_child);
+                    wait(NULL);
+                    return 1;
+                }
             }
-        }
 
-        fprintf(file, "LOGOUT\n.\n");
-        fflush(file);
-        sleep(1);
-        // Read server response for LOGOUT
-        if (fgets(response, BUFFER_SIZE, file) != NULL) {
-            printf("LOGOUT Response: %s", response);
-        }
+            // Send MODIP command
+            fprintf(to_child, "MODIP\nHOSTNAME:%s\nDOMNAME:%s\nIPV4:%s\n.\n", HOSTNAME, DOMNAME, buffer);
+            fflush(to_child);
+            sleep(1);
 
-        pclose(file);
+            // Read server response for MODIP
+            if (fgets(response, BUFFER_SIZE, from_child) != NULL) {
+                printf("MODIP Response: %s", response);
+                if (strstr(response, "SUCCESS") == NULL) {
+                    fprintf(stderr, "MODIP command failed\n");
+                    fclose(to_child);
+                    fclose(from_child);
+                    wait(NULL);
+                    return 1;
+                }
+            }
+
+            // Send LOGOUT command
+            fprintf(to_child, "LOGOUT\n.\n");
+            fflush(to_child);
+            sleep(1);
+
+            // Read server response for LOGOUT
+            if (fgets(response, BUFFER_SIZE, from_child) != NULL) {
+                printf("LOGOUT Response: %s", response);
+            }
+
+            fclose(to_child);
+            fclose(from_child);
+            wait(NULL);
+         
+            return 0;
+        }
 
         // 現在のIPアドレスをファイルに保存
         file = fopen(ip_file, "w");
