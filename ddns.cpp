@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
             sleep(1);
 
             // Read server response for LOGIN
-            if (fgets(response, BUFFER_SIZE, from_child) != NULL) {
+            while (fgets(response, BUFFER_SIZE, from_child) != NULL) {
                 printf("LOGIN Response: %s", response);
                 if (strstr(response, "SUCCESS") == NULL) {
                     fprintf(stderr, "Login failed\n");
@@ -118,6 +118,9 @@ int main(int argc, char *argv[]) {
                     fclose(from_child);
                     wait(NULL);
                     return 1;
+                }
+                if (response == "."){
+                    break;
                 }
             }
 
@@ -127,7 +130,7 @@ int main(int argc, char *argv[]) {
             sleep(1);
 
             // Read server response for MODIP
-            if (fgets(response, BUFFER_SIZE, from_child) != NULL) {
+            while (fgets(response, BUFFER_SIZE, from_child) != NULL) {
                 printf("MODIP Response: %s", response);
                 if (strstr(response, "SUCCESS") == NULL) {
                     fprintf(stderr, "MODIP command failed\n");
@@ -135,6 +138,9 @@ int main(int argc, char *argv[]) {
                     fclose(from_child);
                     wait(NULL);
                     return 1;
+                }
+                if (response == "."){
+                    break;
                 }
             }
 
