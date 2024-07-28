@@ -111,6 +111,9 @@ int main(int argc, char *argv[]) {
 
             // Read server response for LOGIN
             while (fgets(response, BUFFER_SIZE, from_child) != NULL) {
+                if (response == "."){
+                    break;
+                }
                 printf("LOGIN Response: %s", response);
                 if (strstr(response, "SUCCESS") == NULL) {
                     fprintf(stderr, "Login failed\n");
@@ -119,9 +122,7 @@ int main(int argc, char *argv[]) {
                     wait(NULL);
                     return 1;
                 }
-                if (response == "."){
-                    break;
-                }
+                
             }
 
             // Send MODIP command
@@ -131,6 +132,9 @@ int main(int argc, char *argv[]) {
 
             // Read server response for MODIP
             while (fgets(response, BUFFER_SIZE, from_child) != NULL) {
+                if (response == "."){
+                    break;
+                }
                 printf("MODIP Response: %s", response);
                 if (strstr(response, "SUCCESS") == NULL) {
                     fprintf(stderr, "MODIP command failed\n");
@@ -139,9 +143,7 @@ int main(int argc, char *argv[]) {
                     wait(NULL);
                     return 1;
                 }
-                if (response == "."){
-                    break;
-                }
+                
             }
 
             // Send LOGOUT command
