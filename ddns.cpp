@@ -5,10 +5,14 @@
 #include <limits.h>
 #include <stdlib.h>
 
+#define BUFFER_SIZE 1024
+
 const char* USER_ID = "xxxxxxxx";
 const char* PASS = "Password";
 const char* HOSTNAME = "hostname";
 const char* DOMNAME = "example.com";
+
+
 
 char ip_file[PATH_MAX];
 
@@ -35,6 +39,7 @@ int main(int argc, char *argv[]) {
     FILE *file;
     char buffer[128];
     char previous_ip[128] = "";
+    char response[BUFFER_SIZE];
 
 
     // 現在のIPアドレスを取得
@@ -58,13 +63,44 @@ int main(int argc, char *argv[]) {
         printf("IPアドレスが変更されました: %s\n", buffer);
 
         // DNSの登録を実行
-        file = popen("openssl s_client -connect ddnsclient.onamae.com:65010 -quiet", "w");
-        sleep(1);
+        file = popen("openssl s_client -connect ddnsclient.onamae.com:65010 -quiet", "r+");
+        if (file == NULL) {
+            perror("popen");
+            return 1;
+        }
+        
         fprintf(file, "LOGIN\nUSERID:%s\nPASSWORD:%s\n.\n", USER_ID, PASS);
+        fflush(file);
         sleep(1);
+        if (fgets(response, BUFFER_SIZE, file) != NULL) {
+            printf("LOGIN Response: %s", response);
+            if (strstr(response, "SUCCESS") == NULL) {
+                fprintf(stderr, "Login failed\n");
+                pclose(file);
+                return 1;
+            }
+        }
+        
         fprintf(file, "MODIP\nHOSTNAME:%s\nDOMNAME:%s\nIPV4:%s\n.\n", HOSTNAME, DOMNAME, buffer);
-        sleep(1);
+        fflush(file);
+        sleep(1);        
+        if (fgets(response, BUFFER_SIZE, file) != NULL) {
+            printf("MODIP Response: %s", response);
+            if (strstr(response, "SUCCESS") == NULL) {
+                fprintf(stderr, "MODIP command failed\n");
+                pclose(file);
+                return 1;
+            }
+        }
+
         fprintf(file, "LOGOUT\n.\n");
+        fflush(file);
+        sleep(1);
+        // Read server response for LOGOUT
+        if (fgets(response, BUFFER_SIZE, file) != NULL) {
+            printf("LOGOUT Response: %s", response);
+        }
+
         pclose(file);
 
         // 現在のIPアドレスをファイルに保存
@@ -79,5 +115,6 @@ int main(int argc, char *argv[]) {
         printf("IPアドレスに変更はありません: %s\n", buffer);
     }
 
+    printf("正常終了");
     return 0;
 }
