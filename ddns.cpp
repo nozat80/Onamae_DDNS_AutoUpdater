@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
         printf("IPアドレスが変更されました: %s\n", buffer);
 
         // DNSの登録を実行
-        file = popen("openssl s_client -connect ddnsclient.onamae.com:65010 -quiet", "r+");
+        file = popen("openssl s_client -connect ddnsclient.onamae.com:65010 -quiet", "w");
         if (file == NULL) {
             perror("popen");
             return 1;
